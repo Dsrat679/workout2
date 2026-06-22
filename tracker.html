@@ -326,7 +326,23 @@
       if (ex.videoUrl && ex.videoUrl.trim() !== "") {
         const videoCont = document.createElement("div");
         videoCont.className = "video-container";
-        videoCont.innerHTML = `<iframe src="${ex.videoUrl}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+        
+        const lowerUrl = ex.videoUrl.toLowerCase();
+        
+        // Handle local video files (.mp4 or .mov) natively
+        if (lowerUrl.endsWith(".mp4") || lowerUrl.endsWith(".mov")) {
+          videoCont.innerHTML = `
+            <video src="${ex.videoUrl}" 
+                   controls 
+                   playsinline 
+                   preload="metadata" 
+                   style="width:100%; height:100%; object-fit:cover; background:#000;">
+                   Your browser does not support the video tag.
+            </video>`;
+        } else {
+          // Fallback wrapper for YouTube or other cloud iframe links
+          videoCont.innerHTML = `<iframe src="${ex.videoUrl}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+        }
         exWrap.appendChild(videoCont);
       }
 
