@@ -1,0 +1,661 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Dustin Workout Tracker</title>
+  <style>
+    :root { --pad: 14px; --radius: 14px; }
+    body { font-family: -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 0; padding-bottom: 120px; background:#0b0c10; color:#f6f7fb; -webkit-tap-highlight-color: transparent; }
+    header { position: sticky; top: 0; z-index: 5; background: rgba(11,12,16,0.92); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .wrap { max-width: 980px; margin: 0 auto; padding: var(--pad); }
+    h1 { font-size: 18px; margin: 0 0 6px; }
+    .sub { opacity:.78; font-size: 13px; }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    @media (min-width: 880px) { .grid { grid-template-columns: 1.2fr 0.8fr; } }
+    .card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10); border-radius: var(--radius); padding: var(--pad); }
+    .row { display:flex; gap:10px; flex-wrap: wrap; align-items: center; }
+    
+    .btn { background:#1f6feb; border: 0; color: #fff; padding: 12px; border-radius: 12px; font-weight: 650; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; touch-action: manipulation; -webkit-appearance: none; }
+    .btn.secondary { background: rgba(255,255,255,0.10); }
+    .btn.danger { background: #d32f2f; }
+    .btn.success { background: #238636; }
+    .btn:active { transform: scale(0.96); opacity: 0.8; }
+    
+    select, input, textarea { font-size: 16px; width: 100%; padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.14); background: rgba(0,0,0,0.25); color: #fff; outline: none; box-sizing: border-box; -webkit-appearance: none; }
+    select { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%23ffffff' d='M0 0l5 5 5-5z'/></svg>"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 30px; }
+    textarea { min-height: 70px; resize: vertical; }
+    label { font-size: 12px; opacity: .8; display:block; margin-bottom: 6px; }
+    .pill { display:inline-flex; align-items:center; gap:8px; padding: 8px 10px; border-radius: 999px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.10); font-size: 12px; }
+    .muted { opacity: .75; }
+    .exercise { border-top: 1px solid rgba(255,255,255,0.10); padding-top: 12px; margin-top: 12px; }
+    .exercise:first-child { border-top: 0; padding-top: 0; margin-top: 0; }
+    .ex-title { font-weight: 750; margin-bottom: 8px; }
+    
+    .setline { display: grid; grid-template-columns: 32px 1fr 1fr 1.2fr 42px 42px; gap: 6px; margin-bottom: 8px; align-items: center; }
+    .setline input { padding: 12px 4px; text-align: center; }
+    .setline input[type="text"] { text-align: left; padding: 12px; }
+    .setline.completed { opacity: 0.35; background: rgba(46, 160, 67, 0.08); border-radius: 8px; }
+    
+    .small { font-size: 12px; opacity: .8; }
+    .split { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .logitem { padding: 10px; border-radius: 12px; background: rgba(0,0,0,0.22); border: 1px solid rgba(255,255,255,0.10); margin-top: 10px; }
+    a { color: #8ab4ff; }
+    .kbd { font-family: ui-monospace, Menlo, Monaco, Consolas, monospace; font-size: 12px; padding: 2px 6px; border-radius: 8px; background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.12); }
+    
+    .timer-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #161b22; border-top: 2px solid #30363d; padding: 16px var(--pad) calc(16px + env(safe-area-inset-bottom)); z-index: 99; display: flex; align-items: center; justify-content: space-between; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+    .timer-display { font-family: monospace; font-size: 22px; font-weight: bold; color: #58a6ff; }
+    .progress-track { position: absolute; top: 0; left: 0; height: 3px; background: #58a6ff; width: 0%; transition: width 1s linear; }
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Dustin Workout Tracker</h1>
+    <div class="sub">Fat loss · pure cables & machines · recovery rotation · 40+ friendly</div>
+  </div>
+</header>
+
+<div class="wrap grid">
+
+  <section class="card" id="workoutCard">
+    <div class="row" style="justify-content: space-between;">
+      <div>
+        <div class="pill"><strong>Today:</strong> <span id="todayLabel">—</span></div>
+        <div class="small muted" style="margin-top:6px;">Rotation: Upper A → Lower A → Rest → Upper B → Lower B → Rest → Rest</div>
+      </div>
+      <div class="row">
+        <button class="btn secondary" id="prevBtn" style="padding: 12px 16px;">← Previous</button>
+        <button class="btn" id="nextBtn" style="padding: 12px 16px;">Next →</button>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top: 12px;">
+      <div style="flex: 1 1 240px;">
+        <label for="daySelect">Jump to day</label>
+        <select id="daySelect"></select>
+      </div>
+      <div style="flex: 1 1 240px;">
+        <label for="dateInput">Log date</label>
+        <input id="dateInput" type="date" />
+      </div>
+      <div style="flex: 1 1 240px;">
+        <label>&nbsp;</label>
+        <button class="btn" id="saveSessionBtn" style="width: 100%;">Save Session</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 12px; background: rgba(255,255,255,0.04);" id="exercisesArea"></div>
+
+    <div style="margin-top:12px;">
+      <label for="sessionNotes">Session notes (optional)</label>
+      <textarea id="sessionNotes" placeholder="Energy, pumps, joints, sleep, etc."></textarea>
+    </div>
+  </section>
+
+  <aside class="card">
+    <div class="row" style="justify-content: space-between;">
+      <div class="pill"><strong>Progress:</strong> <span id="progressLabel">—</span></div>
+      <button class="btn secondary" id="resetTodayBtn">Clear Inputs</button>
+    </div>
+
+    <div class="card" style="margin-top:12px; background: rgba(255,255,255,0.04);">
+      <div class="row" style="justify-content: space-between;">
+        <strong>Recent Sessions</strong>
+        <button class="btn secondary" id="exportBtn">Export</button>
+      </div>
+      <input type="file" id="importFile" accept="application/json" style="margin-top:10px;" />
+      <button class="btn secondary" id="importBtn" style="margin-top:8px; width:100%;">Import</button>
+      <div id="historyArea" style="margin-top: 10px;"></div>
+    </div>
+
+    <div class="card" style="margin-top:12px; background: rgba(255,255,255,0.04);">
+      <strong>Settings</strong>
+      <div class="split" style="margin-top:10px;">
+        <div>
+          <label for="unitsSelect">Units</label>
+          <select id="unitsSelect">
+            <option value="lb">lb</option>
+            <option value="kg">kg</option>
+          </select>
+        </div>
+        <div>
+          <label for="restDayMode">Rest days</label>
+          <select id="restDayMode">
+            <option value="fixed">Fixed</option>
+            <option value="auto">Auto</option>
+          </select>
+        </div>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <button class="btn danger" id="wipeAllBtn" style="width:100%;">Wipe All Data</button>
+      </div>
+    </div>
+  </aside>
+
+</div>
+
+<div class="timer-bar">
+  <div class="progress-track" id="timerProgress"></div>
+  <div style="display: flex; flex-direction: column;">
+    <span style="font-size: 11px; opacity: 0.6; text-transform: uppercase; letter-spacing: 0.5px;">Rest Interval</span>
+    <span class="timer-display" id="timerClock">00:60</span>
+  </div>
+  <div class="row" style="gap: 6px;">
+    <button class="btn secondary" style="padding: 6px 10px; font-size:13px;" id="minusTimerBtn">-10s</button>
+    <button class="btn secondary" style="padding: 6px 10px; font-size:13px;" id="plusTimerBtn">+10s</button>
+    <button class="btn danger" style="padding: 6px 12px; font-size:13px; font-weight:bold;" id="timerToggleBtn">Start</button>
+  </div>
+</div>
+
+<script>
+  const PLAN = [
+    {
+      key: "Upper A",
+      title: "Monday: Upper Body A",
+      notes: "High-intensity mechanical tension. Run every working set to absolute failure. Pin shoulder blades back and control the eccentric phase cleanly.",
+      exercises: [
+        { name: "1. Convergent Machine Incline Press", sets: 2, repRange: "6–9" },
+        { name: "2. Chest-Supported Neutral Grip Machine Row", sets: 2, repRange: "8–10" },
+        { name: "3. Standing Mid-Cable Fly / Crossover", sets: 2, repRange: "10–12" },
+        { name: "4. Cable Lat Pulldown (Single-Arm or Wide)", sets: 2, repRange: "8–10" },
+        { name: "5. Cable Lateral Raises (Behind-the-Back)", sets: 3, repRange: "12–15" },
+        { name: "6. Bicep Cable Curl + Overhead Tricep Ext. (Superset)", sets: 2, repRange: "10–12" }
+      ]
+    },
+    {
+      key: "Lower A",
+      title: "Tuesday: Lower Body A",
+      notes: "Quad dominance and structural hip control. No lower back loading. Keep movement continuous and precise.",
+      exercises: [
+        { name: "1. Leg Press (High Foot Placement)", sets: 2, repRange: "8–10" },
+        { name: "2. Seated Leg Extensions", sets: 3, repRange: "10–12" },
+        { name: "3. Lying or Seated Leg Curl", sets: 3, repRange: "8–10" },
+        { name: "4. Standing or Seated Machine Calf Raises", sets: 3, repRange: "12–15" },
+        { name: "5. Hanging Knee Raises or Decline Abs", sets: 3, repRange: "Failure" }
+      ]
+    },
+    {
+      key: "Rest 1",
+      title: "Wednesday: Rest / Active Recovery Only",
+      notes: "30 min Zone 2 cardio (treadmill incline walk or bike). Mobility focus. Assist fat loss and clear muscle system inflammation.",
+      exercises: []
+    },
+    {
+      key: "Upper B",
+      title: "Thursday: Upper Body B",
+      notes: "Altered push angles and upper lat width emphasis. Maximize peak muscle contraction squeezes.",
+      exercises: [
+        { name: "1. Convergent Flat Chest Press Machine", sets: 2, repRange: "6–9" },
+        { name: "2. Wide-Grip Lat Pulldown or Seated Cable Row", sets: 2, repRange: "8–10" },
+        { name: "3. Machine Shoulder Press (Convergent/Cable)", sets: 2, repRange: "8–10" },
+        { name: "4. Single-Arm Cable Low-to-High Fly", sets: 2, repRange: "10–12" },
+        { name: "5. Cable Face Pulls (with Rope)", sets: 3, repRange: "12–15" },
+        { name: "6. Tricep Pushdown + Incline Cable Hammer Curl (Superset)", sets: 2, repRange: "10–12" }
+      ]
+    },
+    {
+      key: "Lower B",
+      title: "Friday: Lower Body B",
+      notes: "Posterior chain dominance. Start fresh on hamstrings to bring maximum training intensity into structural tissue recovery.",
+      exercises: [
+        { name: "1. Seated or Lying Leg Curl (Hams First)", sets: 3, repRange: "8–10" },
+        { name: "2. Hack Squat Machine or Pendulum Squat", sets: 2, repRange: "8–10" },
+        { name: "3. Machine Leg Press (Low & Tight Foot Placement)", sets: 2, repRange: "10–12" },
+        { name: "4. Seated Calf Raises (Soleus Focus)", sets: 3, repRange: "12–15" },
+        { name: "5. Cable Crunch / Rope Pulldowns", sets: 3, repRange: "Failure" }
+      ]
+    },
+    {
+      key: "Rest 2",
+      title: "Saturday: Rest / Tissue Repair",
+      notes: "Deep rest day. Allow central nervous system fatigue to clear out entirely. Track step count targets.",
+      exercises: []
+    },
+    {
+      key: "Rest 3",
+      title: "Sunday: Rest / Preparation",
+      notes: "Internal hydration checking and nutrition prep for the week. Rest day meal structural alignment.",
+      exercises: []
+    }
+  ];
+
+  const STORE_KEY = "dustin_workout_tracker_v1";
+  const todayISO = () => new Date().toISOString().slice(0,10);
+  
+  const $ = (id) => document.getElementById(id);
+
+  let timerInterval = null;
+  let timerDuration = 60;
+  let timerTimeLeft = 60;
+
+  // Fully sandboxed safely initialized state framework
+  let state = { pointer: 0, units: "lb", restMode: "fixed", draft: {}, history: [] };
+  
+  function initStore() {
+    try {
+      const raw = localStorage.getItem(STORE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") {
+          if (typeof parsed.pointer === "number") state.pointer = parsed.pointer;
+          if (parsed.units) state.units = parsed.units;
+          if (parsed.restMode) state.restMode = parsed.restMode;
+          if (parsed.history && Array.isArray(parsed.history)) state.history = parsed.history;
+          if (parsed.draft && typeof parsed.draft === "object") state.draft = parsed.draft;
+        }
+      }
+    } catch (e) {
+      console.log("Localstorage suppressed or empty", e);
+    }
+    // Strict fallback structure verification
+    if (!state.draft) state.draft = {};
+    if (!state.history) state.history = [];
+    saveState();
+  }
+  
+  function saveState() {
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify(state));
+    } catch(e) {}
+  }
+
+  function setPointer(idx){ 
+    if(idx < 0) idx = PLAN.length - 1; 
+    if(idx >= PLAN.length) idx = 0; 
+    state.pointer = idx; 
+    saveState(); 
+    render(); 
+  }
+  
+  function ensureDraftForDay(dayKey){ 
+    if (!state.draft) state.draft = {};
+    if (!state.draft[dayKey]) {
+      state.draft[dayKey] = { textNotes: "", logDate: todayISO() };
+    } 
+  }
+
+  function renderDaySelect(){
+    const sel = $("daySelect"); 
+    if (!sel) return;
+    sel.innerHTML = "";
+    PLAN.forEach((d, idx) => { 
+      const opt = document.createElement("option"); 
+      opt.value = String(idx);
+      opt.textContent = d.key;
+      sel.appendChild(opt);
+    });
+    sel.value = String(state.pointer);
+  }
+
+  function findLastExerciseLog(exName){
+    if (!state.history) return null;
+    for(let i = state.history.length - 1; i >= 0; i--){
+      const h = state.history[i]; 
+      const ent = h.entries ? h.entries[exName] : null;
+      if(!ent) continue;
+      const parsedSets = ent.filter(s => (s.w || s.r));
+      const summary = parsedSets.map((s, idx) => `#${idx + 1} ${s.w || "—"}${state.units} x ${s.r || "—"}`).join(" | ");
+      if(summary.length) return { date: h.date, summary, rawSets: parsedSets };
+    }
+    return null;
+  }
+
+  function renderExercises(){
+    const day = PLAN[state.pointer];
+    if (!day) return;
+    ensureDraftForDay(day.key);
+
+    const todayLabel = $("todayLabel");
+    const progressLabel = $("progressLabel");
+    const dateInput = $("dateInput");
+    const sessionNotes = $("sessionNotes");
+    const area = $("exercisesArea");
+
+    if (todayLabel) todayLabel.textContent = day.key;
+    if (progressLabel) progressLabel.textContent = `${state.pointer + 1}/${PLAN.length}`;
+    if (dateInput) dateInput.value = state.draft[day.key].logDate || todayISO();
+    if (sessionNotes) sessionNotes.value = state.draft[day.key].textNotes || "";
+
+    if (!area) return;
+    area.innerHTML = "";
+    
+    const header = document.createElement("div");
+    header.innerHTML = `
+      <div class="row" style="justify-content: space-between;">
+        <div>
+          <div style="font-weight:800; font-size:16px;">${day.title}</div>
+          <div class="small muted" style="margin-top:4px;">${day.notes || ""}</div>
+        </div>
+        <div class="pill"><strong>Units:</strong> ${state.units}</div>
+      </div>`;
+    area.appendChild(header);
+
+    if(!day.exercises || !day.exercises.length){
+      const rest = document.createElement("div"); 
+      rest.className = "exercise";
+      rest.innerHTML = `<div class="ex-title">No lifting today.</div><div class="small muted">Do Zone 2 (30 min). Mobility optional. Save session if you want it in history.</div>`;
+      area.appendChild(rest); 
+      return;
+    }
+
+    day.exercises.forEach((ex, exIdx) => {
+      const exWrap = document.createElement("div"); 
+      exWrap.className = "exercise";
+      
+      const exTitle = document.createElement("div"); 
+      exTitle.className = "ex-title";
+      exTitle.textContent = `${ex.name} — ${ex.sets} sets @ ${ex.repRange}`;
+      exWrap.appendChild(exTitle);
+
+      if (!state.draft[day.key][ex.name]) {
+        state.draft[day.key][ex.name] = Array.from({ length: ex.sets }, () => ({ w: "", r: "", n: "", c: false }));
+      }
+      const existing = state.draft[day.key][ex.name];
+      while(existing.length < ex.sets) existing.push({ w: "", r: "", n: "", c: false });
+      if(existing.length > ex.sets) existing.length = ex.sets;
+
+      const last = findLastExerciseLog(ex.name);
+
+      for(let i = 0; i < ex.sets; i++){
+        const line = document.createElement("div"); 
+        line.id = `line_${exIdx}_${i}`;
+        line.className = `setline ${existing[i].c ? 'completed' : ''}`;
+        
+        let targetW = "";
+        let targetR = "";
+        if (last && last.rawSets && last.rawSets[i]) {
+          targetW = last.rawSets[i].w ? `${last.rawSets[i].w}` : "";
+          targetR = last.rawSets[i].r ? `${last.rawSets[i].r}` : "";
+        }
+
+        line.innerHTML = `
+          <input inputmode="numeric" pattern="[0-9]*" value="${i + 1}" disabled style="font-weight:bold; color:#58a6ff; background:transparent; border:0;">
+          <input inputmode="decimal" id="w_${exIdx}_${i}" placeholder="${targetW ? '🎯' + targetW : 'Weight'}" value="${existing[i].w ?? ""}">
+          <input inputmode="numeric" pattern="[0-9]*" id="r_${exIdx}_${i}" placeholder="${targetR ? '🎯' + targetR : 'Reps'}" value="${existing[i].r ?? ""}">
+          <input placeholder="Note" value="${existing[i].n ?? ""}">
+          <button class="btn secondary timer-trigger-btn" style="padding:10px 0; font-size:12px;">⏱️</button>
+          <button class="btn ${existing[i].c ? 'success' : 'secondary'} complete-trigger-btn" style="padding:10px 0;">✓</button>
+        `;
+        
+        const inputs = line.querySelectorAll("input");
+        inputs[1].addEventListener("input", (e) => { existing[i].w = e.target.value; saveState(); });
+        inputs[2].addEventListener("input", (e) => { existing[i].r = e.target.value; saveState(); });
+        inputs[3].addEventListener("input", (e) => { existing[i].n = e.target.value; saveState(); });
+        
+        line.querySelector(".timer-trigger-btn").addEventListener("click", (e) => {
+          e.preventDefault();
+          triggerSetTimer();
+        });
+
+        line.querySelector(".complete-trigger-btn").addEventListener("click", (e) => {
+          e.preventDefault();
+          toggleLineComplete(day.key, ex.name, exIdx, i);
+        });
+
+        exWrap.appendChild(line);
+      }
+
+      if(last){
+        const lastDiv = document.createElement("div");
+        lastDiv.className = "small muted"; 
+        lastDiv.style.marginTop = "6px";
+        lastDiv.textContent = `Last: ${last.date} • ${last.summary}`;
+        exWrap.appendChild(lastDiv);
+      }
+
+      area.appendChild(exWrap);
+    });
+
+    saveState();
+  }
+
+  function toggleLineComplete(dayKey, exName, exIdx, setIdx) {
+    const rowData = state.draft[dayKey][exName][setIdx];
+    rowData.c = !rowData.c;
+    saveState();
+    
+    const element = document.getElementById(`line_${exIdx}_${setIdx}`);
+    if (element) {
+      element.classList.toggle('completed');
+      const btn = element.querySelectorAll('button')[1];
+      if (rowData.c) {
+        btn.className = "btn success complete-trigger-btn";
+      } else {
+        btn.className = "btn secondary complete-trigger-btn";
+      }
+    }
+  }
+
+  function triggerSetTimer() {
+    clearInterval(timerInterval);
+    timerTimeLeft = timerDuration;
+    updateTimerDisplay();
+    startTimerLoop();
+  }
+
+  function toggleTimer() {
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      $("timerToggleBtn").textContent = "Start";
+      $("timerToggleBtn").className = "btn success";
+    } else {
+      startTimerLoop();
+    }
+  }
+
+  function startTimerLoop() {
+    $("timerToggleBtn").textContent = "Pause";
+    $("timerToggleBtn").className = "btn danger";
+    
+    updateTimerDisplay();
+    timerInterval = setInterval(() => {
+      timerTimeLeft--;
+      if (timerTimeLeft <= 0) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+        timerTimeLeft = 0;
+        $("timerToggleBtn").textContent = "Start";
+        $("timerToggleBtn").className = "btn success";
+        
+        document.body.style.background = "#238636";
+        setTimeout(() => { document.body.style.background = "#0b0c10"; }, 400);
+      }
+      updateTimerDisplay();
+    }, 1000);
+  }
+
+  function adjustTimer(amount) {
+    timerDuration = Math.max(10, timerDuration + amount);
+    if (!timerInterval) {
+      timerTimeLeft = timerDuration;
+    } else {
+      timerTimeLeft = Math.max(0, timerTimeLeft + amount);
+    }
+    updateTimerDisplay();
+  }
+
+  function updateTimerDisplay() {
+    const secs = String(timerTimeLeft).padStart(2, '0');
+    $("timerClock").textContent = `00:${secs}`;
+    const pct = ((timerDuration - timerTimeLeft) / timerDuration) * 100;
+    $("timerProgress").style.width = `${pct}%`;
+  }
+
+  function formatSessionForAlert(h){
+    let s = `${h.dayTitle}\n${h.date}\n\n`;
+    if(h.entries){
+      for(const [ex, sets] of Object.entries(h.entries)){
+        if(Array.isArray(sets)){
+          const line = sets.filter(x => (x.w || x.r)).map((x, i) => `#${i + 1} ${x.w || "—"}${state.units} x ${x.r || "—"}${x.n ? ` (${x.n})` : ""}`).join(" | ");
+          if(line.length) s += `${ex}: ${line}\n`;
+        }
+      }
+    }
+    if(h.notes) s += `\nNotes: ${h.notes}\n`;
+    return s;
+  }
+
+  function escapeHtml(str){
+    return String(str).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
+  }
+
+  function renderHistory(){
+    const area = $("historyArea"); 
+    if (!area) return;
+    area.innerHTML = "";
+    
+    const items = [...state.history].slice(-10).reverse();
+    if(!items.length){ 
+      area.innerHTML = `<div class="small muted">No sessions saved yet.</div>`; 
+      return; 
+    }
+
+    items.forEach(h => {
+      const div = document.createElement("div"); 
+      div.className = "logitem";
+      const exCount = h.entries ? Object.keys(h.entries).length : 0;
+      div.innerHTML = `
+        <div class="row" style="justify-content: space-between;">
+          <strong>${h.dayTitle}</strong>
+          <span class="small muted">${h.date}</span>
+        </div>
+        <div class="small muted" style="margin-top:6px;">${exCount} exercises logged</div>
+        ${h.notes ? `<div class="small" style="margin-top:8px;">📝 ${escapeHtml(h.notes)}</div>` : ``}
+        <div class="row" style="margin-top:10px; justify-content: space-between;">
+          <button class="btn secondary" data-action="view" data-id="${h.id}">View</button>
+          <button class="btn danger" data-action="delete" data-id="${h.id}">Delete</button>
+        </div>`;
+      area.appendChild(div);
+    });
+
+    area.querySelectorAll("button[data-action]").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        const action = btn.getAttribute("data-action");
+        const id = btn.getAttribute("data-id");
+        if(action === "delete"){
+          if(confirm("Delete this session from history?")){
+            state.history = state.history.filter(h => h.id !== id);
+            saveState(); renderHistory();
+          }
+        } else if(action === "view") {
+          const h = state.history.find(x => x.id === id);
+          if(h) alert(formatSessionForAlert(h));
+        }
+      });
+    });
+  }
+
+  $("prevBtn").addEventListener("click", (e) => { e.preventDefault(); setPointer(state.pointer - 1); });
+  $("nextBtn").addEventListener("click", (e) => { e.preventDefault(); setPointer(state.pointer + 1); });
+  $("daySelect").addEventListener("change", (e) => { setPointer(parseInt(e.target.value, 10)); });
+  
+  $("unitsSelect").addEventListener("change", (e) => { state.units = e.target.value; saveState(); render(); });
+  $("restDayMode").addEventListener("change", (e) => { state.restMode = e.target.value; saveState(); });
+
+  $("dateInput").addEventListener("input", (e) => {
+    const day = PLAN[state.pointer];
+    ensureDraftForDay(day.key);
+    state.draft[day.key].logDate = e.target.value;
+    saveState();
+  });
+
+  $("sessionNotes").addEventListener("input", (e) => {
+    const day = PLAN[state.pointer];
+    ensureDraftForDay(day.key);
+    state.draft[day.key].textNotes = e.target.value;
+    saveState();
+  });
+
+  $("resetTodayBtn").addEventListener("click", (e) => {
+    e.preventDefault();
+    const day = PLAN[state.pointer];
+    state.draft[day.key] = { textNotes: "", logDate: todayISO() };
+    saveState();
+    renderExercises();
+  });
+
+  $("saveSessionBtn").addEventListener("click", (e) => {
+    e.preventDefault();
+    const day = PLAN[state.pointer];
+    ensureDraftForDay(day.key);
+    const date = $("dateInput").value || todayISO();
+    const notes = $("sessionNotes").value?.trim() || "";
+    const entries = {};
+    
+    if(day.exercises.length){
+      day.exercises.forEach(ex => {
+        const sets = (state.draft[day.key][ex.name] || []).map(x => ({ w: x.w || "", r: x.r || "", n: x.n || "" }));
+        entries[ex.name] = sets;
+      });
+    }
+    
+    const generatedId = (Date.now().toString(36) + Math.random().toString(36).slice(2, 9));
+    
+    const session = {
+      id: generatedId,
+      date, dayKey: day.key, dayTitle: day.title,
+      entries: day.exercises.length ? entries : {}, notes
+    };
+    
+    state.history.push(session);
+    state.draft[day.key] = { textNotes: "", logDate: todayISO() };
+    saveState();
+    
+    render();
+    alert("Session saved ✅");
+  });
+
+  $("exportBtn").addEventListener("click", (e) => {
+    e.preventDefault();
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url;
+    a.download = `dustin_workout_tracker_backup_${todayISO()}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  $("importBtn").addEventListener("click", async (e) => {
+    e.preventDefault();
+    const file = $("importFile").files?.[0];
+    if(!file){ alert("Choose a JSON file first."); return; }
+    try {
+      const text = await file.text();
+      const incoming = JSON.parse(text);
+      if(!incoming || typeof incoming !== "object" || !("history" in incoming)){
+        alert("That file doesn't look like a valid backup."); return;
+      }
+      state = incoming; saveState(); render(); alert("Imported ✅");
+    } catch { alert("Import failed. Make sure it's a valid JSON backup."); }
+  });
+
+  $("wipeAllBtn").addEventListener("click", (e) => {
+    e.preventDefault();
+    if(!confirm("Wipe ALL saved data on this device? This cannot be undone.")) return;
+    if(!confirm("Are you absolutely sure? Your entire history will be permanently deleted.")) return;
+    localStorage.removeItem(STORE_KEY);
+    state = { pointer: 0, units: "lb", restMode: "fixed", draft: {}, history: [] };
+    saveState(); render();
+  });
+
+  $("minusTimerBtn").addEventListener("click", (e) => { e.preventDefault(); adjustTimer(-10); });
+  $("plusTimerBtn").addEventListener("click", (e) => { e.preventDefault(); adjustTimer(10); });
+  $("timerToggleBtn").addEventListener("click", (e) => { e.preventDefault(); toggleTimer(); });
+
+  function render(){
+    const uSel = $("unitsSelect"); if (uSel) uSel.value = state.units || "lb";
+    const rSel = $("restDayMode"); if (rSel) rSel.value = state.restMode || "fixed";
+    renderDaySelect();
+    renderExercises();
+    renderHistory();
+  }
+
+  // Double gate execution setup
+  initStore();
+  render();
+</script>
+</body>
+</html>
